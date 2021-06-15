@@ -1,0 +1,10 @@
+.main-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  &__header {
+  }
+  &__body {
+    flex-grow: 1;overflow: hidden;
+  }
+}

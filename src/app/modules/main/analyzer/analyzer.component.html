@@ -1,0 +1,96 @@
+<ng-container class="analyzer-container" *ngIf="(calls.matchingPercentage$ | async) as matchingPercentage">
+  <ng-template #subHeader>
+    <div class="analyzer-container__flex">
+      <div class="selects">
+        <mat-form-field appearance="fill" floatLabel="never">
+          <mat-icon matPrefix>group</mat-icon>
+          <mat-select (selectionChange)="selectAgent($event)" id="agent" name="agent" placeholder="Agent"
+            [disableOptionCentering]="true">
+            <mat-option *ngFor="let agent of agents.agents$ | async" [value]="agent.id">{{agent.fullName}}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" floatLabel="never" class="call-selection">
+          <mat-icon matPrefix>phone</mat-icon>
+          <mat-select [(ngModel)]="callSelection" (ngModelChange)="selectCall($event)" name="call" placeholder="Call"
+            [disableOptionCentering]="true">
+            <mat-option *ngFor="let call of calls.activeAgentCalls$ | async" [value]="call.id">{{call.startTime |date:
+              'MM/dd/YYYY'}} - {{call.customer?.speakerName}}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="slider" *ngIf="callSelection">
+        <span class="slider__label">MATCHING SENSITIVITY</span>
+        <mat-slider aria-label="matching sensitivity %" min="1" max="100" step="1" (change)="selectMatch($event)"
+          [value]="matchingPercentage"></mat-slider>
+        <span class="slider__value">{{matchingPercentage}}%</span>
+      </div>
+    </div>
+  </ng-template>
+
+  <section class="analyzer-container__content" *ngIf="(calls.activeTranscript$ | async) as call; else emptyState">
+    <div class="card">
+      <div class="title">
+        Real
+        <span>Alignment to the expected script: {{getSimilarity(call.transcript)}}%</span>
+      </div>
+      <div class="table">
+        <div class="table__header">
+          <div class="table__cell">Time</div>
+          <div class="table__cell">Speaker</div>
+          <div class="table__cell">Sentence</div>
+        </div>
+        <div class="table__body">
+        <div class="table__row" *ngFor="let transcript of call.transcript">
+          <div class="table__cell">{{ (transcript.timeFrom||0) * 1000 | date:'mm:ss' }}</div>
+          <div class="table__cell">{{ call.getSpeaker(transcript.channel) }}</div>
+          <div class="table__cell" [ngClass]="{
+          'matched': (transcript.similarity || 0) * 100 >= matchingPercentage
+         }">
+            <span class="message" [matTooltip]="getHint(transcript)" matTooltipPosition="above"
+              (mouseenter)="onHoverSentence(transcript)" (mouseleave)="hoveredSentence$.next(null)">
+              {{ transcript.sentence }}
+            </span>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title">
+        Expected
+        <span>Percent of script covered: {{getSimilarity(call.script)}}%</span>
+      </div>
+
+      <div class="table">
+        <div class="table__header">
+          <div class="table__cell">Line</div>
+          <div class="table__cell">Speaker</div>
+          <div class="table__cell">Sentence</div>
+        </div>
+        <div class="table__body">
+        <div class="table__row" *ngFor="let script of call.script">
+          <div class="table__cell">{{ script.order  }}</div>
+          <div class="table__cell">Rep:</div>
+          <div class="table__cell" [ngClass]="{
+            'matched': (script.similarity || 0) * 100 >= matchingPercentage,
+            'matched__hovered': (hoveredSentence$ | async) === script.sentence
+           }">{{ script.sentence }}</div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <ng-template #emptyState>
+    <div class="analyzer-container__empty-state">
+      <img src="assets/img/no-selection.svg" alt="No Selection" />
+      <h4>Selection pending</h4>
+      <p>Select a call from top menu and a transcript<br />
+        analysis will be shown here</p>
+    </div>
+  </ng-template>
+</ng-container>
